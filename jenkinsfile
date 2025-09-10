@@ -1,0 +1,70 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_ACCOUNT_ID = "796008141374"
+        AWS_REGION = "eu-north-1"
+        IMAGE_REPO_NAME = "amazon-ecr-001"
+        IMAGE_TAG = "v1"
+        REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
+    }
+
+    stages {
+        stage('Checkout Git Repo') {
+            steps {
+                echo "📥 Cloning Git repository..."
+                git url: 'https://github.com/your-username/your-java-app.git', branch: 'main'
+            }
+        }
+
+        stage('Build JAR with Maven') {
+            steps {
+                echo "🔧 Building JAR with Maven..."
+                sh "mvn clean package -DskipTests"
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                echo "🐳 Building Docker image..."
+                sh "docker build -t ${IMAGE_REPO_NAME}:${IMAGE_TAG} ."
+            }
+        }
+
+        stage('Tag Image for ECR') {
+            steps {
+                echo "🏷️ Tagging image for ECR..."
+                sh "docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${REPOSITORY_URI}:${IMAGE_TAG}"
+            }
+        }
+
+        stage('Login & Push to ECR') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'aws-creds',
+                    usernameVariable: 'AWS_ACCESS_KEY_ID',
+                    passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                )]) {
+                    sh """
+                        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+
+                        aws ecr get-login-password --region ${AWS_REGION} | \
+                        docker login --username AWS --password-stdin ${REPOSITORY_URI}
+
+                        docker push ${REPOSITORY_URI}:${IMAGE_TAG}
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Docker image pushed to ECR: ${REPOSITORY_URI}:${IMAGE_TAG}"
+        }
+        failure {
+            echo "❌ Pipeline failed. Check logs for details."
+        }
+    }
+}
