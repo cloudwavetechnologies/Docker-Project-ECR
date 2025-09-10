@@ -16,7 +16,6 @@ pipeline {
                     def IMAGE_TAG = BRANCH_NAME
                     def REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
 
-                    // Save to environment for later stages
                     env.BRANCH_NAME = BRANCH_NAME
                     env.IMAGE_TAG = IMAGE_TAG
                     env.REPOSITORY_URI = REPOSITORY_URI
@@ -51,6 +50,7 @@ pipeline {
                     steps {
                         echo "🔧 Building JAR..."
                         sh 'mvn clean package -DskipTests'
+                        sh 'cp target/myapp.jar ./'
                     }
                 }
 
