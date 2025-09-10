@@ -5,18 +5,25 @@ pipeline {
         AWS_ACCOUNT_ID = "796008141374"
         AWS_REGION = "eu-north-1"
         IMAGE_REPO_NAME = "amazon-ecr-001"
-        BRANCH = "${env.BRANCH_NAME ?: 'unknown'}"
-        IMAGE_TAG = "${BRANCH}"
-        REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
     }
 
     stages {
+        stage('Detect Branch') {
+            steps {
+                script {
+                    BRANCH_NAME = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                    IMAGE_TAG = BRANCH_NAME
+                    REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
+                    echo "🔍 Detected branch: ${BRANCH_NAME}"
+                }
+            }
+        }
+
         stage('Branch Check') {
             steps {
                 script {
-                    def branch = env.BRANCH_NAME ?: ""
-                    if (!(branch == 'master' || branch == 'develop' || branch.startsWith('release') || branch.startsWith('feature'))) {
-                        echo "🚫 Skipping unsupported branch: '${branch}'"
+                    if (!(BRANCH_NAME == 'master' || BRANCH_NAME == 'develop' || BRANCH_NAME.startsWith('release') || BRANCH_NAME.startsWith('feature'))) {
+                        echo "🚫 Skipping unsupported branch: '${BRANCH_NAME}'"
                         currentBuild.result = 'SUCCESS'
                         return
                     }
@@ -27,8 +34,7 @@ pipeline {
         stage('Build & Push') {
             when {
                 expression {
-                    def branch = env.BRANCH_NAME ?: ""
-                    return branch == 'master' || branch == 'develop' || branch.startsWith('release') || branch.startsWith('feature')
+                    return BRANCH_NAME == 'master' || BRANCH_NAME == 'develop' || BRANCH_NAME.startsWith('release') || BRANCH_NAME.startsWith('feature')
                 }
             }
             stages {
@@ -73,10 +79,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Image pushed for branch: ${env.BRANCH_NAME ?: 'unknown'}"
+            echo "✅ Image pushed for branch: ${BRANCH_NAME}"
         }
         failure {
-            echo "❌ Pipeline failed for branch: ${env.BRANCH_NAME ?: 'unknown'}"
+            echo "❌ Pipeline failed for branch: ${BRANCH_NAME}"
         }
     }
 }
