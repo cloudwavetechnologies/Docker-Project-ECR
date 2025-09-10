@@ -11,9 +11,16 @@ pipeline {
         stage('Detect Branch') {
             steps {
                 script {
-                    BRANCH_NAME = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
-                    IMAGE_TAG = BRANCH_NAME
-                    REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
+                    def rawBranch = env.GIT_BRANCH ?: sh(script: "git branch --contains HEAD | grep -v detached | head -n 1 | sed 's/* //' || echo HEAD'", returnStdout: true).trim()
+                    def BRANCH_NAME = rawBranch.replaceAll('origin/', '').replaceAll('refs/heads/', '').trim()
+                    def IMAGE_TAG = BRANCH_NAME
+                    def REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
+
+                    // Save to environment for later stages
+                    env.BRANCH_NAME = BRANCH_NAME
+                    env.IMAGE_TAG = IMAGE_TAG
+                    env.REPOSITORY_URI = REPOSITORY_URI
+
                     echo "🔍 Detected branch: ${BRANCH_NAME}"
                 }
             }
@@ -22,8 +29,9 @@ pipeline {
         stage('Branch Check') {
             steps {
                 script {
-                    if (!(BRANCH_NAME == 'master' || BRANCH_NAME == 'develop' || BRANCH_NAME.startsWith('release') || BRANCH_NAME.startsWith('feature'))) {
-                        echo "🚫 Skipping unsupported branch: '${BRANCH_NAME}'"
+                    def branch = env.BRANCH_NAME ?: ""
+                    if (!(branch == 'master' || branch == 'develop' || branch.startsWith('release') || branch.startsWith('feature'))) {
+                        echo "🚫 Skipping unsupported branch: '${branch}'"
                         currentBuild.result = 'SUCCESS'
                         return
                     }
@@ -34,7 +42,8 @@ pipeline {
         stage('Build & Push') {
             when {
                 expression {
-                    return BRANCH_NAME == 'master' || BRANCH_NAME == 'develop' || BRANCH_NAME.startsWith('release') || BRANCH_NAME.startsWith('feature')
+                    def branch = env.BRANCH_NAME ?: ""
+                    return branch == 'master' || branch == 'develop' || branch.startsWith('release') || branch.startsWith('feature')
                 }
             }
             stages {
@@ -48,7 +57,7 @@ pipeline {
                 stage('Build Docker Image') {
                     steps {
                         echo "🐳 Building Docker image..."
-                        sh "docker build -t ${IMAGE_REPO_NAME}:${IMAGE_TAG} ."
+                        sh "docker build -t ${IMAGE_REPO_NAME}:${env.IMAGE_TAG} ."
                     }
                 }
 
@@ -65,10 +74,10 @@ pipeline {
                                 export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 
                                 aws ecr get-login-password --region ${AWS_REGION} | \
-                                docker login --username AWS --password-stdin ${REPOSITORY_URI}
+                                docker login --username AWS --password-stdin ${env.REPOSITORY_URI}
 
-                                docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${REPOSITORY_URI}:${IMAGE_TAG}
-                                docker push ${REPOSITORY_URI}:${IMAGE_TAG}
+                                docker tag ${IMAGE_REPO_NAME}:${env.IMAGE_TAG} ${env.REPOSITORY_URI}:${env.IMAGE_TAG}
+                                docker push ${env.REPOSITORY_URI}:${env.IMAGE_TAG}
                             """
                         }
                     }
@@ -79,10 +88,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Image pushed for branch: ${BRANCH_NAME}"
+            echo "✅ Image pushed for branch: ${env.BRANCH_NAME}"
         }
         failure {
-            echo "❌ Pipeline failed for branch: ${BRANCH_NAME}"
+            echo "❌ Pipeline failed for branch: ${env.BRANCH_NAME}"
         }
     }
 }
