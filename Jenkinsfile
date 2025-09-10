@@ -50,7 +50,7 @@ pipeline {
                     steps {
                         echo "🔧 Building JAR..."
                         sh 'mvn clean package -DskipTests'
-                        sh 'cp target/myapp.jar ./'
+                        sh 'cp target/myapp-jar-with-dependencies.jar ./myapp.jar'
                     }
                 }
 
