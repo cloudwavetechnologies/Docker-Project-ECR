@@ -13,7 +13,7 @@ pipeline {
         stage('Checkout Git Repo') {
             steps {
                 echo "📥 Cloning Git repository..."
-                git url: 'https://github.com/your-username/your-java-app.git', branch: 'main'
+                git url: 'https://github.com/cloudwavetechnologies/Docker-Project-ECR.git', branch: 'master'
             }
         }
 
