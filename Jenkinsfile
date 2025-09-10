@@ -5,12 +5,27 @@ pipeline {
         AWS_ACCOUNT_ID = "796008141374"
         AWS_REGION = "eu-north-1"
         IMAGE_REPO_NAME = "amazon-ecr-001"
-        BRANCH = "${env.BRANCH_NAME ?: 'unknown'}"
-        IMAGE_TAG = "${BRANCH}"
-        REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
     }
 
     stages {
+        stage('Detect Branch') {
+            steps {
+                script {
+                    def rawBranch = env.GIT_BRANCH ?: sh(script: "git branch --contains HEAD | grep -v detached | head -n 1 | sed 's/* //' || echo HEAD'", returnStdout: true).trim()
+                    def BRANCH_NAME = rawBranch.replaceAll('origin/', '').replaceAll('refs/heads/', '').trim()
+                    def IMAGE_TAG = BRANCH_NAME
+                    def REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
+
+                    // Save to environment for later stages
+                    env.BRANCH_NAME = BRANCH_NAME
+                    env.IMAGE_TAG = IMAGE_TAG
+                    env.REPOSITORY_URI = REPOSITORY_URI
+
+                    echo "🔍 Detected branch: ${BRANCH_NAME}"
+                }
+            }
+        }
+
         stage('Branch Check') {
             steps {
                 script {
@@ -42,7 +57,7 @@ pipeline {
                 stage('Build Docker Image') {
                     steps {
                         echo "🐳 Building Docker image..."
-                        sh "docker build -t ${IMAGE_REPO_NAME}:${IMAGE_TAG} ."
+                        sh "docker build -t ${IMAGE_REPO_NAME}:${env.IMAGE_TAG} ."
                     }
                 }
 
@@ -59,10 +74,10 @@ pipeline {
                                 export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 
                                 aws ecr get-login-password --region ${AWS_REGION} | \
-                                docker login --username AWS --password-stdin ${REPOSITORY_URI}
+                                docker login --username AWS --password-stdin ${env.REPOSITORY_URI}
 
-                                docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${REPOSITORY_URI}:${IMAGE_TAG}
-                                docker push ${REPOSITORY_URI}:${IMAGE_TAG}
+                                docker tag ${IMAGE_REPO_NAME}:${env.IMAGE_TAG} ${env.REPOSITORY_URI}:${env.IMAGE_TAG}
+                                docker push ${env.REPOSITORY_URI}:${env.IMAGE_TAG}
                             """
                         }
                     }
@@ -73,10 +88,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Image pushed for branch: ${env.BRANCH_NAME ?: 'unknown'}"
+            echo "✅ Image pushed for branch: ${env.BRANCH_NAME}"
         }
         failure {
-            echo "❌ Pipeline failed for branch: ${env.BRANCH_NAME ?: 'unknown'}"
+            echo "❌ Pipeline failed for branch: ${env.BRANCH_NAME}"
         }
     }
 }
