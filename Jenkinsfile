@@ -5,7 +5,8 @@ pipeline {
         AWS_ACCOUNT_ID = "796008141374"
         AWS_REGION = "eu-north-1"
         IMAGE_REPO_NAME = "amazon-ecr-001"
-        IMAGE_TAG = "${env.BRANCH_NAME}"
+        BRANCH = "${env.BRANCH_NAME ?: 'unknown'}"
+        IMAGE_TAG = "${BRANCH}"
         REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
     }
 
@@ -13,8 +14,9 @@ pipeline {
         stage('Branch Check') {
             steps {
                 script {
-                    if (!(env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME.startsWith('release') || env.BRANCH_NAME.startsWith('feature'))) {
-                        echo "🚫 Skipping unsupported branch: ${env.BRANCH_NAME}"
+                    def branch = env.BRANCH_NAME ?: ""
+                    if (!(branch == 'master' || branch == 'develop' || branch.startsWith('release') || branch.startsWith('feature'))) {
+                        echo "🚫 Skipping unsupported branch: '${branch}'"
                         currentBuild.result = 'SUCCESS'
                         return
                     }
@@ -25,25 +27,28 @@ pipeline {
         stage('Build & Push') {
             when {
                 expression {
-                    env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'develop' ||
-                    env.BRANCH_NAME.startsWith('release') || env.BRANCH_NAME.startsWith('feature')
+                    def branch = env.BRANCH_NAME ?: ""
+                    return branch == 'master' || branch == 'develop' || branch.startsWith('release') || branch.startsWith('feature')
                 }
             }
             stages {
                 stage('Build JAR') {
                     steps {
+                        echo "🔧 Building JAR..."
                         sh 'mvn clean package -DskipTests'
                     }
                 }
 
                 stage('Build Docker Image') {
                     steps {
+                        echo "🐳 Building Docker image..."
                         sh "docker build -t ${IMAGE_REPO_NAME}:${IMAGE_TAG} ."
                     }
                 }
 
                 stage('Tag & Push to ECR') {
                     steps {
+                        echo "🚀 Tagging and pushing image to ECR..."
                         withCredentials([usernamePassword(
                             credentialsId: 'aws-creds',
                             usernameVariable: 'AWS_ACCESS_KEY_ID',
@@ -68,10 +73,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Image pushed for branch: ${env.BRANCH_NAME}"
+            echo "✅ Image pushed for branch: ${env.BRANCH_NAME ?: 'unknown'}"
         }
         failure {
-            echo "❌ Pipeline failed for branch: ${env.BRANCH_NAME}"
+            echo "❌ Pipeline failed for branch: ${env.BRANCH_NAME ?: 'unknown'}"
         }
     }
 }
