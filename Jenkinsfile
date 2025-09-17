@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCOUNT_ID = "796008141374"
+        AWS_ACCOUNT_ID = "093326771949"
         AWS_REGION = "eu-north-1"
         IMAGE_REPO_NAME = "amazon-ecr-001"
     }
@@ -29,7 +29,7 @@ pipeline {
             steps {
                 script {
                     def branch = env.BRANCH_NAME ?: ""
-                    if (!(branch == 'master' || branch == 'develop' || branch.startsWith('release') || branch.startsWith('feature'))) {
+                    if (!(branch == 'master' || branch == 'develop' || branch.startsWith('release') ||branch.startsWith('feature') || branch.startsWith('feature'))) {
                         echo "🚫 Skipping unsupported branch: '${branch}'"
                         currentBuild.result = 'SUCCESS'
                         return
@@ -61,7 +61,7 @@ pipeline {
                     }
                 }
 
-                stage('Tag & Push to ECR') {
+               /* stage('Tag & Push to ECR') {
                     steps {
                         echo "🚀 Tagging and pushing image to ECR..."
                         withCredentials([usernamePassword(
@@ -81,7 +81,7 @@ pipeline {
                             """
                         }
                     }
-                }
+                } */
             }
         }
     }
