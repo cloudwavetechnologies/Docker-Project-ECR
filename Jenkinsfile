@@ -19,9 +19,10 @@ pipeline {
         stage('Checkout & Branch Filter') {
     steps {
         script {
-            def branch = env.BRANCH_NAME?.trim()
+            // 🔧 Hardcoded branch name to force pipeline execution
+            def branch = 'feature/lambda-s3-trigger'
 
-            echo "🔍 Checked out branch: '${branch}'"
+            echo "🔍 Using hardcoded branch: '${branch}'"
 
             if (branch == 'master' ||
                 branch ==~ /^develop.*/ ||
