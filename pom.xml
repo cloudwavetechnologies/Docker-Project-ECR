@@ -4,13 +4,13 @@
                              http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.example</groupId>
+    <groupId>com.cloudwavetechnologies</groupId>
     <artifactId>myapp</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>MyApp</name>
-    <description>Simple Java app for Docker + ECR deployment</description>
+    <description>Java Lambda triggered by S3 for CloudWaveTechnologies</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -19,9 +19,8 @@
 
     <build>
         <finalName>myapp</finalName>
-
         <plugins>
-            <!-- Compiler plugin -->
+            <!-- ✅ Java Compiler Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -32,7 +31,7 @@
                 </configuration>
             </plugin>
 
-            <!-- JAR plugin to set entry point -->
+            <!-- ✅ JAR Manifest Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -40,13 +39,13 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.example.Main</mainClass>
+                            <mainClass>com.cloudwavetechnologies.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
             </plugin>
 
-            <!-- Assembly plugin to include dependencies -->
+            <!-- ✅ Assembly Plugin for Dependencies -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
@@ -57,7 +56,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>com.example.Main</mainClass>
+                            <mainClass>com.cloudwavetechnologies.Main</mainClass>
                         </manifest>
                     </archive>
                     <finalName>myapp</finalName>
@@ -73,7 +72,7 @@
                 </executions>
             </plugin>
 
-            <!-- Lambda Maven Plugin for deployment -->
+            <!-- ✅ Lambda Maven Plugin -->
             <plugin>
                 <groupId>br.com.ingenieux</groupId>
                 <artifactId>lambda-maven-plugin</artifactId>
@@ -81,8 +80,8 @@
                 <configuration>
                     <region>eu-north-1</region>
                     <functionName>amazon-java-code-lambda-001</functionName>
-                    <handler>com.example.Main::handleRequest</handler>
-                    <role>arn:aws:iam::093326771949:role/service-role/amazon-java-code-lambda-001-role-0w2vgpaj</role>
+                    <handler>com.cloudwavetechnologies.Main::handleRequest</handler>
+                    <role>arn:aws:iam::093326771949:role/your-lambda-execution-role</role>
                     <memorySize>512</memorySize>
                     <timeout>30</timeout>
                     <zipFile>${project.build.directory}/myapp-jar-with-dependencies.jar</zipFile>
