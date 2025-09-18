@@ -17,49 +17,44 @@ pipeline {
 
     stages {
         stage('Checkout & Branch Filter') {
-    steps {
-        script {
-            // 🔧 Hardcoded branch name to force pipeline execution
-            def branch = 'feature/lambda-s3-trigger'
+            steps {
+                script {
+                    def branch = 'feature/lambda-s3-trigger'
+                    echo "🔍 Using hardcoded branch: '${branch}'"
 
-            echo "🔍 Using hardcoded branch: '${branch}'"
-
-            if (branch == 'master' ||
-                branch ==~ /^develop.*/ ||
-                branch ==~ /^release.*/ ||
-                branch ==~ /^feature.*/) {
-                echo "✅ Supported branch detected: '${branch}'"
-                env.BRANCH_NAME = branch
-            } else {
-                echo "🚫 Unsupported branch: '${branch}' — skipping pipeline execution."
-                currentBuild.result = 'SUCCESS'
-                return
+                    if (branch == 'master' ||
+                        branch ==~ /^develop.*/ ||
+                        branch ==~ /^release.*/ ||
+                        branch ==~ /^feature.*/) {
+                        echo "✅ Supported branch detected: '${branch}'"
+                        env.BRANCH_NAME = branch
+                    } else {
+                        echo "🚫 Unsupported branch: '${branch}' — skipping pipeline execution."
+                        currentBuild.result = 'SUCCESS'
+                        return
+                    }
+                }
             }
         }
-    }
-}
 
         stage('Build JAR') {
             when {
-                expression {
-                    return env.BRANCH_NAME != null
-                }
+                expression { env.BRANCH_NAME != null }
             }
             steps {
                 echo "🔧 Building JAR..."
-                sh 'mvn clean install'
+                sh 'mvn clean package'
             }
         }
 
-    stage('Upload to S3') {
+        stage('Upload to S3') {
             when {
                 expression { env.BRANCH_NAME != null }
             }
-			environment {
+            environment {
                 AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
                 AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
             }
-
             steps {
                 echo "📦 Uploading JAR to S3 bucket path: ${S3_KEY_PREFIX}/"
 
@@ -80,11 +75,10 @@ pipeline {
             when {
                 expression { env.BRANCH_NAME != null }
             }
-			environment {
+            environment {
                 AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
                 AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
             }
-
             steps {
                 echo "🔄 Updating Lambda function code from S3..."
                 sh """
@@ -95,6 +89,13 @@ pipeline {
                         --region ${AWS_REGION}
                 """
             }
+        }
+    }
+
+    post {
+        always {
+            echo "🧹 Cleaning up workspace..."
+            cleanWs()
         }
     }
 }
