@@ -6,7 +6,9 @@ pipeline {
         AWS_REGION = "eu-north-1"
         IMAGE_REPO_NAME = "amazon-ecr-001"
     }
-
+   tools {
+        maven 'Maven3'
+   }
     stages {
         stage('Detect Branch') {
             steps {
