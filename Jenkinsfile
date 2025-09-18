@@ -6,7 +6,9 @@ pipeline {
         AWS_REGION = "eu-north-1"
         IMAGE_REPO_NAME = "amazon-ecr-001"
     }
-
+   tools {
+        maven 'mvn'
+   }
     stages {
         stage('Detect Branch') {
             steps {
@@ -49,8 +51,9 @@ pipeline {
                 stage('Build JAR') {
                     steps {
                         echo "🔧 Building JAR..."
-                        sh 'mvn clean package -DskipTests'
-                        sh 'cp target/myapp-jar-with-dependencies.jar ./myapp.jar'
+                      //  sh 'mvn clean package -DskipTests'
+                         sh 'mvn clean install'
+                      //  sh 'cp target/myapp-jar-with-dependencies.jar ./myapp.jar'
                     }
                 }
 
