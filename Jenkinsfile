@@ -2,99 +2,85 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCOUNT_ID = "093326771949"
-        AWS_REGION = "eu-north-1"
-        IMAGE_REPO_NAME = "amazon-ecr-001"
+        AWS_ACCOUNT_ID       = "093326771949"
+        AWS_REGION           = "eu-north-1"
+        IMAGE_REPO_NAME      = "amazon-ecr-001"
+        LAMBDA_FUNCTION_NAME = "amazon-java-code-lambda-001"
+        JAR_NAME             = "supplychain-project-1.0-SNAPSHOT.jar"
+        S3_BUCKET            = "supplychain-s3-000"
+        S3_KEY_PREFIX        = "Infra-folder"
     }
-   tools {
+
+    tools {
         maven 'mvn'
-   }
+    }
+
     stages {
-        stage('Detect Branch') {
+        stage('Checkout & Branch Filter') {
             steps {
                 script {
-                    def rawBranch = env.GIT_BRANCH ?: sh(script: "git branch --contains HEAD | grep -v detached | head -n 1 | sed 's/* //' || echo HEAD'", returnStdout: true).trim()
-                    def BRANCH_NAME = rawBranch.replaceAll('origin/', '').replaceAll('refs/heads/', '').trim()
-                    def IMAGE_TAG = BRANCH_NAME
-                    def REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
+                    def branch = env.BRANCH_NAME ?: sh(
+                        script: "git rev-parse --abbrev-ref HEAD",
+                        returnStdout: true
+                    ).trim()
 
-                    env.BRANCH_NAME = BRANCH_NAME
-                    env.IMAGE_TAG = IMAGE_TAG
-                    env.REPOSITORY_URI = REPOSITORY_URI
+                    echo "🔍 Checked out branch: ${branch}"
 
-                    echo "🔍 Detected branch: ${BRANCH_NAME}"
-                }
-            }
-        }
-
-        stage('Branch Check') {
-            steps {
-                script {
-                    def branch = env.BRANCH_NAME ?: ""
-                    if (!(branch == 'master' || branch == 'develop' || branch.startsWith('release') ||branch.startsWith('feature') || branch.startsWith('feature'))) {
+                    if (!(branch == 'master' ||
+                          branch ==~ /develop.*/ ||
+                          branch ==~ /release.*/ ||
+                          branch ==~ /feature.*/)) {
                         echo "🚫 Skipping unsupported branch: '${branch}'"
                         currentBuild.result = 'SUCCESS'
                         return
                     }
+
+                    env.BRANCH_NAME = branch
                 }
             }
         }
 
-        stage('Build & Push') {
+        stage('Build JAR') {
             when {
                 expression {
-                    def branch = env.BRANCH_NAME ?: ""
-                    return branch == 'master' || branch == 'develop' || branch.startsWith('release') || branch.startsWith('feature')
+                    return env.BRANCH_NAME != null
                 }
             }
-            stages {
-                stage('Build JAR') {
-                    steps {
-                        echo "🔧 Building JAR..."
-                      //  sh 'mvn clean package -DskipTests'
-                         sh 'mvn clean install'
-                      //  sh 'cp target/myapp-jar-with-dependencies.jar ./myapp.jar'
-                    }
-                }
-
-                stage('Build Docker Image') {
-                    steps {
-                        echo "🐳 Building Docker image..."
-                        sh "docker build -t ${IMAGE_REPO_NAME}:${env.IMAGE_TAG} ."
-                    }
-                }
-
-               /* stage('Tag & Push to ECR') {
-                    steps {
-                        echo "🚀 Tagging and pushing image to ECR..."
-                        withCredentials([usernamePassword(
-                            credentialsId: 'aws-creds',
-                            usernameVariable: 'AWS_ACCESS_KEY_ID',
-                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                        )]) {
-                            sh """
-                                export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                                export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-
-                                aws ecr get-login-password --region ${AWS_REGION} | \
-                                docker login --username AWS --password-stdin ${env.REPOSITORY_URI}
-
-                                docker tag ${IMAGE_REPO_NAME}:${env.IMAGE_TAG} ${env.REPOSITORY_URI}:${env.IMAGE_TAG}
-                                docker push ${env.REPOSITORY_URI}:${env.IMAGE_TAG}
-                            """
-                        }
-                    }
-                } */
+            steps {
+                echo "🔧 Building JAR..."
+                sh 'mvn clean install'
             }
         }
-    }
 
-    post {
-        success {
-            echo "✅ Image pushed for branch: ${env.BRANCH_NAME}"
+        stage('Upload to S3') {
+            when {
+                expression {
+                    return env.BRANCH_NAME != null
+                }
+            }
+            steps {
+                echo "📦 Uploading JAR to S3 bucket path: ${S3_KEY_PREFIX}/"
+                sh "aws s3 cp target/${JAR_NAME} s3://${S3_BUCKET}/${S3_KEY_PREFIX}/"
+                sh "aws s3 ls s3://${S3_BUCKET}/${S3_KEY_PREFIX}/"
+            }
         }
-        failure {
-            echo "❌ Pipeline failed for branch: ${env.BRANCH_NAME}"
+
+        stage('Update Lambda Config') {
+            when {
+                expression {
+                    return env.BRANCH_NAME != null
+                }
+            }
+            steps {
+                echo "🔄 Updating Lambda function code from S3..."
+                sh """
+                    aws lambda update-function-code \
+                        --function-name ${LAMBDA_FUNCTION_NAME} \
+                        --s3-bucket ${S3_BUCKET} \
+                        --s3-key ${S3_KEY_PREFIX}/${JAR_NAME} \
+                        --region ${AWS_REGION}
+                """
+            }
         }
     }
 }
