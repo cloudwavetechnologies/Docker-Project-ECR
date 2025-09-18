@@ -29,7 +29,7 @@ pipeline {
             steps {
                 script {
                     def branch = env.BRANCH_NAME ?: ""
-                    if (!(branch == 'master' || branch == 'develop' || branch.startsWith('release') ||branch.startsWith('feature') || branch.startsWith('feature'))) {
+                    if (!(branch == 'master' || branch == 'develop' || branch.startsWith('release') || branch.startsWith('feature'))) {
                         echo "🚫 Skipping unsupported branch: '${branch}'"
                         currentBuild.result = 'SUCCESS'
                         return
