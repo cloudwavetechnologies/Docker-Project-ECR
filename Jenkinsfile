@@ -81,21 +81,23 @@ pipeline {
             }
         steps {
         echo "🔄 Updating Lambda function code from S3..."
-        sh """
-            aws lambda update-function-code \
-                --function-name ${LAMBDA_FUNCTION_NAME} \
-                --s3-bucket ${S3_BUCKET} \
-                --s3-key ${S3_KEY_PREFIX}/${JAR_NAME} \
-                --region ${AWS_REGION}
-        """
+         sh """
+  aws lambda update-function-code \
+    --function-name ${LAMBDA_FUNCTION_NAME} \
+    --s3-bucket ${S3_BUCKET} \
+    --s3-key ${S3_KEY_PREFIX}/${JAR_NAME} \
+    --region ${AWS_REGION}
+"""
 
-        echo "🛠️ Setting Lambda handler to com.cloudwavetechnologies.Main::handleRequest..."
-        sh """
-            aws lambda update-function-configuration \
-                --function-name ${LAMBDA_FUNCTION_NAME} \
-                --handler com.cloudwavetechnologies.Main::handleRequest \
-                --region ${AWS_REGION}
-        """
+echo "⏳ Waiting for Lambda update to complete..."
+sleep(time: 20, unit: 'SECONDS') // Adjust if needed
+
+sh """
+  aws lambda update-function-configuration \
+    --function-name ${LAMBDA_FUNCTION_NAME} \
+    --handler com.cloudwavetechnologies.Main::handleRequest \
+    --region ${AWS_REGION}
+"""
     }
         }
     }
