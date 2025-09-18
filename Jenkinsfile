@@ -17,28 +17,26 @@ pipeline {
 
     stages {
         stage('Checkout & Branch Filter') {
-            steps {
-                script {
-                    def branch = env.BRANCH_NAME ?: sh(
-                        script: "git rev-parse --abbrev-ref HEAD",
-                        returnStdout: true
-                    ).trim()
+    steps {
+        script {
+            def branch = env.BRANCH_NAME?.trim()
 
-                    echo "🔍 Checked out branch: ${branch}"
+            echo "🔍 Checked out branch: '${branch}'"
 
-                    if (!(branch == 'master' ||
-                          branch ==~ /develop.*/ ||
-                          branch ==~ /release.*/ ||
-                          branch ==~ /feature.*/)) {
-                        echo "🚫 Skipping unsupported branch: '${branch}'"
-                        currentBuild.result = 'SUCCESS'
-                        return
-                    }
-
-                    env.BRANCH_NAME = branch
-                }
+            if (branch == 'master' ||
+                branch ==~ /^develop.*/ ||
+                branch ==~ /^release.*/ ||
+                branch ==~ /^feature.*/) {
+                echo "✅ Supported branch detected: '${branch}'"
+                env.BRANCH_NAME = branch
+            } else {
+                echo "🚫 Unsupported branch: '${branch}' — skipping pipeline execution."
+                currentBuild.result = 'SUCCESS'
+                return
             }
         }
+    }
+}
 
         stage('Build JAR') {
             when {
