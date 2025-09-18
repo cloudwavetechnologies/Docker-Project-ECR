@@ -6,7 +6,7 @@ pipeline {
         AWS_REGION           = "eu-north-1"
         IMAGE_REPO_NAME      = "amazon-ecr-001"
         LAMBDA_FUNCTION_NAME = "amazon-java-code-lambda-001"
-        JAR_NAME             = "supplychain-project-1.0-SNAPSHOT.jar"
+        JAR_NAME             = "myapp-jar-with-dependencies.jar"
         S3_BUCKET            = "supplychain-s3-000"
         S3_KEY_PREFIX        = "Infra-folder"
     }
