@@ -18,7 +18,8 @@
     </properties>
 
     <build>
-        <finalName>myapp</finalName> <!-- 👈 Ensures output is myapp.jar -->
+        <finalName>myapp</finalName>
+
         <plugins>
             <!-- Compiler plugin -->
             <plugin>
@@ -59,7 +60,7 @@
                             <mainClass>com.example.Main</mainClass>
                         </manifest>
                     </archive>
-                    <finalName>myapp</finalName> <!-- 👈 Ensures output is myapp.jar -->
+                    <finalName>myapp</finalName>
                 </configuration>
                 <executions>
                     <execution>
@@ -67,6 +68,33 @@
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Lambda Maven Plugin for deployment -->
+            <plugin>
+                <groupId>br.com.ingenieux</groupId>
+                <artifactId>lambda-maven-plugin</artifactId>
+                <version>1.5.2</version>
+                <configuration>
+                    <region>eu-north-1</region>
+                    <functionName>amazon-java-code-lambda-001</functionName>
+                    <handler>com.example.Main::handleRequest</handler>
+                    <role>arn:aws:iam::093326771949:role/service-role/amazon-java-code-lambda-001-role-0w2vgpaj</role>
+                    <memorySize>512</memorySize>
+                    <timeout>30</timeout>
+                    <zipFile>${project.build.directory}/myapp-jar-with-dependencies.jar</zipFile>
+                    <description>Triggered via Maven build</description>
+                    <publish>true</publish>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>deploy-lambda</id>
+                        <phase>deploy</phase>
+                        <goals>
+                            <goal>deploy-function</goal>
                         </goals>
                     </execution>
                 </executions>
