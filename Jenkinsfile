@@ -52,34 +52,28 @@ pipeline {
         }
 
     stage('Upload to S3') {
-    when {
-        expression {
-            return env.BRANCH_NAME != null
+            when {
+                expression { env.BRANCH_NAME != null }
+            }
+            steps {
+                echo "📦 Uploading JAR to S3 bucket path: ${S3_KEY_PREFIX}/"
+
+                sh """
+                    if [ ! -f target/${JAR_NAME} ]; then
+                        echo '❌ JAR file not found: target/${JAR_NAME}'
+                        ls target/
+                        exit 1
+                    fi
+                """
+
+                sh "aws s3 cp target/${JAR_NAME} s3://${S3_BUCKET}/${S3_KEY_PREFIX}/"
+                sh "aws s3 ls s3://${S3_BUCKET}/${S3_KEY_PREFIX}/"
+            }
         }
-    }
-    steps {
-        echo "📦 Uploading JAR to S3 bucket path: ${S3_KEY_PREFIX}/"
-
-        // ✅ Check if JAR exists before uploading
-        sh """
-            if [ ! -f target/${JAR_NAME} ]; then
-                echo '❌ JAR file not found: target/${JAR_NAME}'
-                ls target/
-                exit 1
-            fi
-        """
-
-        // ✅ Upload to S3
-        sh "aws s3 cp target/${JAR_NAME} s3://${S3_BUCKET}/${S3_KEY_PREFIX}/"
-        sh "aws s3 ls s3://${S3_BUCKET}/${S3_KEY_PREFIX}/"
-    }
-}
 
         stage('Update Lambda Config') {
             when {
-                expression {
-                    return env.BRANCH_NAME != null
-                }
+                expression { env.BRANCH_NAME != null }
             }
             steps {
                 echo "🔄 Updating Lambda function code from S3..."
