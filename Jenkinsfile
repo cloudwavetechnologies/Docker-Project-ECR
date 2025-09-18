@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        AWS_ACCOUNT_ID       = "093326771949"
         AWS_REGION           = "eu-north-1"
         IMAGE_REPO_NAME      = "amazon-ecr-001"
         LAMBDA_FUNCTION_NAME = "amazon-java-code-lambda-001"
@@ -16,44 +17,49 @@ pipeline {
 
     stages {
         stage('Checkout & Branch Filter') {
-            steps {
-                script {
-                    def branch = env.BRANCH_NAME?.trim()
-                    echo "🔍 Checked out branch: '${branch}'"
+    steps {
+        script {
+            // 🔧 Hardcoded branch name to force pipeline execution
+            def branch = 'feature/lambda-s3-trigger'
 
-                    if (branch == 'master' ||
-                        branch ==~ /^develop.*/ ||
-                        branch ==~ /^release.*/ ||
-                        branch ==~ /^feature.*/) {
-                        echo "✅ Supported branch detected: '${branch}'"
-                        env.BRANCH_NAME = branch
-                    } else {
-                        echo "🚫 Unsupported branch: '${branch}' — skipping pipeline execution."
-                        currentBuild.result = 'SUCCESS'
-                        return
-                    }
-                }
+            echo "🔍 Using hardcoded branch: '${branch}'"
+
+            if (branch == 'master' ||
+                branch ==~ /^develop.*/ ||
+                branch ==~ /^release.*/ ||
+                branch ==~ /^feature.*/) {
+                echo "✅ Supported branch detected: '${branch}'"
+                env.BRANCH_NAME = branch
+            } else {
+                echo "🚫 Unsupported branch: '${branch}' — skipping pipeline execution."
+                currentBuild.result = 'SUCCESS'
+                return
             }
         }
+    }
+}
 
         stage('Build JAR') {
             when {
-                expression { env.BRANCH_NAME != null }
+                expression {
+                    return env.BRANCH_NAME != null
+                }
             }
             steps {
-                echo "🔧 Building JAR with dependencies..."
-                sh 'mvn clean package'
+                echo "🔧 Building JAR..."
+                sh 'mvn clean install'
             }
         }
 
-        stage('Upload to S3') {
+    stage('Upload to S3') {
             when {
                 expression { env.BRANCH_NAME != null }
             }
-            environment {
+			environment {
                 AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
                 AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
             }
+
             steps {
                 echo "📦 Uploading JAR to S3 bucket path: ${S3_KEY_PREFIX}/"
 
@@ -74,10 +80,11 @@ pipeline {
             when {
                 expression { env.BRANCH_NAME != null }
             }
-            environment {
+			environment {
                 AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
                 AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
             }
+
             steps {
                 echo "🔄 Updating Lambda function code from S3..."
                 sh """
