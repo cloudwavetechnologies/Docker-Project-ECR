@@ -51,10 +51,10 @@ pipeline {
             when {
                 expression { env.BRANCH_NAME != null }
             }
-            environment {
-                AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
-                AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
-            }
+            // environment {
+            //     AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
+            //     AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+            // }
             steps {
                 echo "📦 Uploading JAR to S3 bucket path: ${S3_KEY_PREFIX}/"
 
@@ -75,10 +75,10 @@ pipeline {
             when {
                 expression { env.BRANCH_NAME != null }
             }
-            environment {
-                AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
-                AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
-            }
+            // environment {
+            //     AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
+            //     AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+            // }
         steps {
         echo "🔄 Updating Lambda function code from S3..."
          sh """
