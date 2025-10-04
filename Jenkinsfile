@@ -12,7 +12,7 @@ pipeline {
     }
 
     tools {
-        maven 'mvn'
+        maven 'Maven3' // ✅ Updated to match your configured tool name
     }
 
     stages {
@@ -45,6 +45,7 @@ pipeline {
             parallel {
                 stage('Build on Master Agent') {
                     agent { label 'master-agent' }
+                    tools { maven 'Maven3' }
                     steps {
                         echo "🔧 Building JAR on master-agent..."
                         sh 'mvn clean package'
