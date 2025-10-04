@@ -1,5 +1,5 @@
 pipeline {
-    agent none  // Each stage defines its own agent
+    agent none  // Each stage will define its own agent
 
     environment {
         AWS_ACCOUNT_ID       = "093326771949"
@@ -9,10 +9,6 @@ pipeline {
         JAR_NAME             = "myapp-jar-with-dependencies.jar"
         S3_BUCKET            = "supplychain-s3-000"
         S3_KEY_PREFIX        = "Infra-folder"
-    }
-
-    tools {
-        maven 'Maven3'
     }
 
     stages {
@@ -45,7 +41,9 @@ pipeline {
             parallel {
                 stage('Build on Master Agent') {
                     agent { label 'master-agent' }
-                    tools { maven 'Maven3' }
+                    tools {
+                        maven 'Maven3'  // ✅ Moved here
+                    }
                     steps {
                         echo "🔧 Building JAR on master-agent..."
                         sh 'mvn clean package'
@@ -53,7 +51,7 @@ pipeline {
                 }
 
                 stage('Validate on Slave2') {
-                    agent { label 'slave2' }  // ✅ slave2 supports at least 2 concurrent jobs
+                    agent { label 'slave2' }
                     steps {
                         echo "🔍 Validating environment on slave2..."
                         sh 'java -version'
@@ -89,13 +87,12 @@ pipeline {
             }
         }
 
-        // Optional: Uncomment this stage if Lambda updates are needed
         /*
         stage('Update Lambda Config') {
             when {
                 expression { env.BRANCH_NAME != null }
             }
-            agent { label 'slave2' }  // ✅ slave2 can now handle concurrent deployments
+            agent { label 'slave2' }
             environment {
                 AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
                 AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
