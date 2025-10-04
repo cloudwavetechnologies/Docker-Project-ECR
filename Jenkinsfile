@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent none
 
     environment {
         AWS_ACCOUNT_ID       = "093326771949"
@@ -17,6 +17,7 @@ pipeline {
 
     stages {
         stage('Checkout & Branch Filter') {
+            agent { label 'master-agent' }
             steps {
                 script {
                     def branch = 'feature/lambda-s3-trigger'
@@ -37,13 +38,28 @@ pipeline {
             }
         }
 
-        stage('Build JAR') {
+        stage('Parallel Build & Validation') {
             when {
                 expression { env.BRANCH_NAME != null }
             }
-            steps {
-                echo "🔧 Building JAR..."
-                sh 'mvn clean package'
+            parallel {
+                stage('Build on Master Agent') {
+                    agent { label 'master-agent' }
+                    steps {
+                        echo "🔧 Building JAR on master-agent..."
+                        sh 'mvn clean package'
+                    }
+                }
+
+                stage('Validate on Slave2') {
+                    agent { label 'slave2' }
+                    steps {
+                        echo "🔍 Validating environment on slave2..."
+                        sh 'java -version'
+                        sh 'df -h'
+                        sh 'free -m'
+                    }
+                }
             }
         }
 
@@ -51,6 +67,7 @@ pipeline {
             when {
                 expression { env.BRANCH_NAME != null }
             }
+            agent { label 'master-agent' }
             environment {
                 AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
                 AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
@@ -75,30 +92,32 @@ pipeline {
             when {
                 expression { env.BRANCH_NAME != null }
             }
+            agent { label 'slave2' }
             environment {
                 AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
                 AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
             }
-        steps {
-        echo "🔄 Updating Lambda function code from S3..."
-         sh """
-  aws lambda update-function-code \
-    --function-name ${LAMBDA_FUNCTION_NAME} \
-    --s3-bucket ${S3_BUCKET} \
-    --s3-key ${S3_KEY_PREFIX}/${JAR_NAME} \
-    --region ${AWS_REGION}
-"""
+            steps {
+                echo "🔄 Updating Lambda function code from S3..."
 
-echo "⏳ Waiting for Lambda update to complete..."
-sleep(time: 20, unit: 'SECONDS') // Adjust if needed
+                sh """
+                    aws lambda update-function-code \
+                        --function-name ${LAMBDA_FUNCTION_NAME} \
+                        --s3-bucket ${S3_BUCKET} \
+                        --s3-key ${S3_KEY_PREFIX}/${JAR_NAME} \
+                        --region ${AWS_REGION}
+                """
 
-sh """
-  aws lambda update-function-configuration \
-    --function-name ${LAMBDA_FUNCTION_NAME} \
-    --handler com.cloudwavetechnologies.Main::handleRequest \
-    --region ${AWS_REGION}
-"""
-    }
+                echo "⏳ Waiting for Lambda update to complete..."
+                sleep(time: 20, unit: 'SECONDS')
+
+                sh """
+                    aws lambda update-function-configuration \
+                        --function-name ${LAMBDA_FUNCTION_NAME} \
+                        --handler com.cloudwavetechnologies.Main::handleRequest \
+                        --region ${AWS_REGION}
+                """
+            }
         }
     }
 
