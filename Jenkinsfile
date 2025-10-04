@@ -122,8 +122,11 @@ pipeline {
         */
     }
 
-    post {
-        always {
+   You can fix this by wrapping cleanWs() inside a node {} block, like so:
+
+post {
+    always {
+        node('master-agent') {
             echo "🧹 Cleaning up workspace..."
             cleanWs()
         }
