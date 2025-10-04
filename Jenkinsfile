@@ -89,7 +89,7 @@ pipeline {
             }
         }
 
-        stage('Update Lambda Config') {
+       /* stage('Update Lambda Config') {
             when {
                 expression { env.BRANCH_NAME != null }
             }
@@ -120,7 +120,7 @@ pipeline {
                 """
             }
         }
-    }
+    }/*
 
     post {
         always {
