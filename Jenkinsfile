@@ -121,9 +121,7 @@ pipeline {
         }
         */
     }
-
-   You can fix this by wrapping cleanWs() inside a node {} block, like so:
-
+	
 // post {
 //     always {
 //         node('master-agent') {
@@ -132,3 +130,5 @@ pipeline {
 //         }
 //     }
 // }
+ }
+ 
