@@ -5,9 +5,9 @@ pipeline {
         AWS_ACCOUNT_ID       = "179968400173"
         AWS_REGION           = "ap-south-1"
         IMAGE_REPO_NAME      = "amazon-ecr-001"
-        LAMBDA_FUNCTION_NAME = "amazon-java-code-lambda-001"
+        LAMBDA_FUNCTION_NAME = "amazon-lambda-java-001"
         JAR_NAME             = "myapp-jar-with-dependencies.jar"
-        S3_BUCKET            = "flipcart-s3-bucket-001"
+        S3_BUCKET            = "java-project-s3-bucket-000"
         S3_KEY_PREFIX        = "Infra-folder"
     }
 
@@ -52,8 +52,8 @@ pipeline {
                 expression { env.BRANCH_NAME != null }
             }
             environment {
-                AWS_ACCESS_KEY_ID     = credentials('aws-access-key')
-                AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
+                AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
+                AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key-id')
             }
             steps {
                 echo "📦 Uploading JAR to S3 bucket path: ${S3_KEY_PREFIX}/"
@@ -76,8 +76,8 @@ pipeline {
                 expression { env.BRANCH_NAME != null }
             }
             environment {
-                AWS_ACCESS_KEY_ID     = credentials('aws-access-key')
-                AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
+                AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
+                AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key-id')
             }
         steps {
         echo "🔄 Updating Lambda function code from S3..."
